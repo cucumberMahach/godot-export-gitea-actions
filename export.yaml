@@ -1,0 +1,51 @@
+name: Сборка проекта Godot
+run-name: ${{ gitea.actor }} собирает проект Godot
+on:
+  push:
+    branches:
+      - build
+
+jobs:
+  # job id, can be anything
+  export_game:
+    # Always use ubuntu-latest for this action
+    runs-on: ubuntu-latest
+    # Add permission for release creation. Can be made narrower according to your needs
+    permissions: write-all
+    # Job name, can be anything
+    name: Сборка игры
+    steps:
+      # Always include the checkout step so that 
+      # your project is available for Godot to export
+    - name: Подгрузка исходников
+      uses: actions/checkout@v3.3.0
+    - name: Обновление базы данных пакетов
+      id: update
+      run: |
+        apt-get -y update
+        echo "WINE_PATH=$(which wine64)" >> $GITHUB_OUTPUT
+    - name: Установка Wine
+      id: wine_install
+      run: |
+        apt-get -y install wine64
+        echo "WINE_PATH=$(which wine64)" >> $GITHUB_OUTPUT
+    - name: Установка 7z
+      id: 7z_install
+      run: |
+        apt-get -y install p7zip-full
+    - name: Экспорт игры
+      id: export
+      # Use latest version (see releases for all versions)
+      uses: firebelley/godot-export@v5.2.1
+      with:
+        wine_path: ${{ steps.wine_install.outputs.WINE_PATH }}
+        # Defining all the required inputs
+        godot_executable_download_url: https://github.com/godotengine/godot-builds/releases/download/4.1.2-stable/Godot_v4.1.2-stable_linux.x86_64.zip
+        godot_export_templates_download_url: https://github.com/godotengine/godot/releases/download/4.1.2-stable/Godot_v4.1.2-stable_export_templates.tpz
+        relative_project_path: ./
+        archive_output: true
+    - name: Выгрузка готового пакета
+      uses: actions/upload-artifact@v3
+      with:
+        name: tds-build
+        path: ${{ steps.export.outputs.archive_directory  }}
